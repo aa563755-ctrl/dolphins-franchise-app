@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dolphins Franchise App</title>
+
+<style>
+body {
+  margin:0;
+  font-family: -apple-system, BlinkMacSystemFont;
+  background:#f4f6f8;
+}
+
+/* HEADER */
+.header {
+  background:#008E97;
+  color:white;
+  padding:14px;
+  font-weight:bold;
+  text-align:center;
+}
+
+/* CONTENT */
+.content {
+  padding:10px;
+  padding-bottom:70px;
+}
+
+.card {
+  background:white;
+  padding:12px;
+  margin-bottom:10px;
+  border-radius:10px;
+  box-shadow:0 2px 4px rgba(0,0,0,0.1);
+}
+
+.name { font-weight:600; }
+.meta { font-size:12px; color:#666; }
+
+/* BADGES */
+.badge {
+  font-size:10px;
+  padding:2px 6px;
+  border-radius:4px;
+  margin-left:5px;
+}
+.dev { background:purple; color:white; }
+.exp { background:red; color:white; }
+
+/* BUTTONS */
+.btn {
+  padding:6px 10px;
+  border:none;
+  border-radius:6px;
+  font-size:12px;
+  margin-top:6px;
+}
+.promote { background:#27ae60; color:white; }
+.demote { background:#c0392b; color:white; }
+
+/* NAV */
+.nav {
+  position:fixed;
+  bottom:0;
+  width:100%;
+  display:flex;
+  background:#111;
+}
+
+.nav button {
+  flex:1;
+  padding:12px;
+  border:none;
+  color:white;
+  background:#111;
+}
+
+.nav button.active {
+  background:#008E97;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">🐬 Dolphins Franchise Hub</div>
+
+<div id="app" class="content"></div>
+
+<div class="nav">
+  <button onclick="setTab('roster')" id="tab-roster">Roster</button>
+  <button onclick="setTab('depth')" id="tab-depth">Depth</button>
+  <button onclick="setTab('contracts')" id="tab-contracts">Deals</button>
+  <button onclick="setTab('dev')" id="tab-dev">Dev</button>
+</div>
+
+<script>
+let players = JSON.parse(localStorage.getItem("roster")) || [
+
+{ name:"C. Beck", pos:"QB", ovr:85, age:26, role:"starter" },
+{ name:"D. Achane", pos:"HB", ovr:96, age:27, role:"starter" },
+{ name:"J. Higgins", pos:"WR", ovr:85, age:26, role:"starter" },
+{ name:"T. Brewer", pos:"WR", ovr:77, age:22, role:"rookie", dev:true },
+{ name:"K. Sadiq", pos:"TE", ovr:90, age:24, role:"starter" },
+{ name:"C. Jagusah", pos:"OL", ovr:87, age:24, role:"starter" },
+{ name:"K. Grant", pos:"DL", ovr:87, age:25, role:"starter" },
+{ name:"D. Greenlaw", pos:"LB", ovr:81, age:32, role:"starter", exp:true },
+{ name:"N. Williams", pos:"CB", ovr:88, age:26, role:"starter" },
+{ name:"D. Brooks", pos:"S", ovr:83, age:24, role:"starter" }
+
+];
+
+let currentTab = "roster";
+
+function save() {
+  localStorage.setItem("roster", JSON.stringify(players));
+}
+
+function setTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));
+  document.getElementById("tab-"+tab).classList.add("active");
+  render();
+}
+
+/* RENDER */
+function render() {
+  let html = "";
+
+  if (currentTab === "roster") {
+    players.forEach(p=>{
+      html += card(p);
+    });
+  }
+
+  if (currentTab === "depth") {
+    let groups = {};
+
+    players.forEach(p=>{
+      if(!groups[p.pos]) groups[p.pos]=[];
+      groups[p.pos].push(p);
+    });
+
+    for(let pos in groups){
+      let sorted = groups[pos].sort((a,b)=>b.ovr-a.ovr);
+
+      html += `<div class="card"><b>${pos}</b><br>`;
+
+      sorted.forEach((p,i)=>{
+        html += `
+          ${i+1}. ${p.name} (${p.ovr})
+          <br>
+          <button class="btn promote" onclick="promote('${p.name}','${pos}')">⬆</button>
+          <button class="btn demote" onclick="demote('${p.name}','${pos}')">⬇</button>
+          <br><br>
+        `;
+      });
+
+      html += "</div>";
+    }
+  }
+
+  if (currentTab === "contracts") {
+    players.filter(p=>p.exp).forEach(p=>{
+      html += card(p, "⚠️ Expiring Contract");
+    });
+  }
+
+  if (currentTab === "dev") {
+    players.filter(p=>p.dev).forEach(p=>{
+      html += card(p, "🧬 Hidden Dev");
+    });
+  }
+
+  document.getElementById("app").innerHTML = html;
+}
+
+/* CARD */
+function card(p, extra="") {
+  return `
+    <div class="card">
+      <div class="name">${p.name}
+        ${p.dev ? '<span class="badge dev">DEV</span>' : ''}
+        ${p.exp ? '<span class="badge exp">EXP</span>' : ''}
+      </div>
+      <div class="meta">${p.pos} • ${p.ovr} OVR • Age ${p.age}</div>
+      <div class="meta">${extra}</div>
+    </div>
+  `;
+}
+
+/* DEPTH CONTROL */
+function promote(name,pos){
+  let group = players.filter(p=>p.pos===pos);
+  let i = group.findIndex(p=>p.name===name);
+  if(i>0)[group[i],group[i-1]]=[group[i-1],group[i]];
+  updateGroup(pos,group);
+}
+
+function demote(name,pos){
+  let group = players.filter(p=>p.pos===pos);
+  let i = group.findIndex(p=>p.name===name);
+  if(i<group.length-1)[group[i],group[i+1]]=[group[i+1],group[i]];
+  updateGroup(pos,group);
+}
+
+function updateGroup(pos,newGroup){
+  let others = players.filter(p=>p.pos!==pos);
+  players = [...others,...newGroup];
+  save();
+  render();
+}
+
+/* INIT */
+setTab("roster");
+</script>
+
+</body>
+</html>
